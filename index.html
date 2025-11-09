@@ -51,7 +51,7 @@
     </div>
 
     <div id="bloqueConectar">
-        <input id="textoServer" value="localhost">
+        <input id="textoServer" value="snakegamerealtime.onrender.com">
         <button id="botonConectar">CONECTAR</button>
     </div>
 
@@ -69,7 +69,7 @@
     //conectar al server
     document.getElementById("botonConectar").addEventListener("click",()=>{
         var direccion = document.getElementById("textoServer").value;
-        miconexion= new WebSocket("ws://"+direccion+":8080");
+        miconexion= new WebSocket("wss://"+direccion+":8080");
         
 
         miconexion.addEventListener("message",(m)=>{
