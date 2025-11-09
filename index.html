@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realtime</title>
+
+    <style>
+        #juego {
+            border: 2px solid black;
+            width: 500px;
+            height: 500px;
+            position:relative;
+        }
+
+        .jugador{
+            width: 20px;
+            height: 20px;
+            background-color: red;
+            position: absolute;
+            left: 100px;
+            top: 100px;
+        }
+        .fruta {
+        width: 20px;
+        height: 20px;
+        background-color: green;
+        position: absolute;
+    }
+    .puntos{
+        position:absolute;
+        top:2px;
+        left:0px;
+        width:100%;
+        text-align:center;
+        font-size:12px;
+        font-weight:bold;
+        color: white;
+        text-shadow: 1px 1px 1px black;
+    }
+    </style>
+</head>
+<body>
+<h1>realtime ^________^</h1>
+
+    <div id ="juego">
+        <div class="jugador" id="plantilla">
+            <div class="puntos" id="puntosJugador"></div>
+        </div>
+        <div class="fruta" id="fruta"></div>
+    </div>
+
+    <div id="bloqueConectar">
+        <input id="textoServer" value="localhost">
+        <button id="botonConectar">CONECTAR</button>
+    </div>
+
+</body>
+
+<script>
+
+    //me guardo el jugador plantilla y lo quito de la escena
+    var jugadorBlueprint = document.getElementById("plantilla");
+    jugadorBlueprint.remove();
+
+
+    var miconexion;
+    var miID=-1;
+    //conectar al server
+    document.getElementById("botonConectar").addEventListener("click",()=>{
+        var direccion = document.getElementById("textoServer").value;
+        miconexion= new WebSocket("ws://"+direccion+":8080");
+        
+
+        miconexion.addEventListener("message",(m)=>{
+        mensaje=JSON.parse(m.data.toString());
+        if ( mensaje.tipo == "new"){
+            if (miID==-1) miID=mensaje.datos.id; //saber quien soy IDKKKK
+
+            //alguien nuevo ha llegado
+            nuevoJugador = jugadorBlueprint.cloneNode(true); //settear a true para que pille children
+            nuevoJugador.id = mensaje.datos.id;
+            nuevoJugador.dataset.posx=mensaje.datos.posx;
+            nuevoJugador.dataset.posy=mensaje.datos.posy;
+            //nuevoJugador.dataset.puntos = mensaje.datos.puntos || 0;//puntos
+
+            //nuevoJugador.children[0].textContent = nuevoJugador.dataset.puntos;//escribir puntos
+
+            nuevoJugador.style.top=mensaje.datos.posy+"px";
+            nuevoJugador.style.left=mensaje.datos.posx+"px";
+
+            document.getElementById("juego").appendChild(nuevoJugador);
+        } else if(mensaje.tipo=="delete"){
+            //alguien se ha ido quitalo de la escena
+            document.getElementById(mensaje.datos).remove();
+        }else if (mensaje.tipo=="mover"){
+            jugadorMover=document.getElementById(mensaje.datos.id);
+            
+            jugadorMover.dataset.dir=mensaje.datos.dir;
+            jugadorMover.dataset.posx=mensaje.datos.posx;
+            jugadorMover.dataset.posy=mensaje.datos.posy; 
+            //jugadorMover.dataset.puntos = mensaje.datos.puntos;//puntos
+
+            //jugadorMover.children[0].textContent = jugadorMover.dataset.puntos;//escribir puntos
+           
+        }
+
+        else if (mensaje.tipo == "puntos") {
+        var jugador = document.getElementById(mensaje.datos.id);
+        jugador.dataset.puntos = mensaje.datos.puntos|| 0;
+        jugador.children[0].textContent =mensaje.datos.puntos ;
+        }
+
+        //-- fruta c
+        else if (mensaje.tipo == "fruta") {
+            var fruta = document.getElementById("fruta");
+
+            fruta.style.left = mensaje.datos.posx + "px";
+            fruta.style.top = mensaje.datos.posy + "px";
+    }
+    })
+
+        //miconexion.addEventListener("open", ()=>{ alert("me he conectado")});
+    })
+
+
+    // ---------------- (lo de abajo es local) luego lo movemos a server
+
+    document.addEventListener("keydown", 
+        (ev)=>{
+            //buscar mi posicion actual para informar a todos
+            var yo= document.getElementById(miID);
+            //avisar servder de q me quieo mover
+            mensaje={
+                tipo:"mover",
+                datos:{
+                    id: miID,
+                    posx: yo.dataset.posx,
+                    posy: yo.dataset.posy,
+                    dir: ev.key
+                }
+            }
+            miconexion.send(
+                JSON.stringify(mensaje)
+            );
+        })
+
+        document.addEventListener("keyup", (ev)=>{
+            var yo= document.getElementById(miID);
+            mensaje={
+                tipo:"mover",
+                datos:{
+                    id: miID,
+                    posx: yo.dataset.posx,
+                    posy: yo.dataset.posy,
+                    dir: "0"
+                }
+            }
+            miconexion.send(
+                JSON.stringify(mensaje)
+            );
+        })
+        
+        //animar automatiacamente pos jugadores
+        setInterval(()=>{
+            //buscar todos los jugadores(div de la clase jugador)
+            var listajugadores = document.getElementsByClassName("jugador");
+            if (listajugadores.length<1){
+                return;
+            }
+
+            for(var i=0; i<listajugadores.length;i++){
+                j=listajugadores[i];
+            
+                            //para cada uno
+                //leer su valor dataset.dir
+                var direccion = j.dataset.dir;
+                //cambiar su posicion en esa direccion
+                    if (direccion=="a"){
+                    j.dataset.posx=Number(j.dataset.posx)-4;
+                } else if (direccion=="d"){
+                    j.dataset.posx=Number(j.dataset.posx)+4;
+                } else if (direccion=="w"){
+                    j.dataset.posy=Number(j.dataset.posy)-4;
+                } else if (direccion=="s"){
+                    j.dataset.posy=Number(j.dataset.posy)+4;
+                }
+
+                            //limitar rango de movimiento
+            if (j.dataset.posx<0){
+                j.dataset.posx=0;
+            }
+            if(j.dataset.posx>500-20){
+                j.dataset.posx=500-20;
+            }
+            if (j.dataset.posy<0){
+                j.dataset.posy=0;
+            }
+            if(j.dataset.posy>500-20){
+                j.dataset.posy=500-20;
+            }
+
+                        ///dibujar jugador en nueva posicion
+            j.style.top=j.dataset.posy+"px";
+            j.style.left=j.dataset.posx+"px";
+
+            }
+
+        }, 50)
+    /*
+    document.addEventListener("keydown", 
+        (ev)=>{
+              if (ev.key=="a"){
+                posx-=20;
+              } else if (ev.key=="d"){
+                posx+=20;
+              } else if (ev.key=="w"){
+                posy-=20;
+              } else if (ev.key=="s"){
+                posy+=20;
+            }
+            //limitar rango de movimiento
+            if (posx<0){
+                posx=0;
+            }
+            if(posx>500-20){
+                posx=500-20;
+            }
+            if (posy<0){
+                posy=0;
+            }
+            if(posy>500-20){
+                posy=500-20;
+            }
+
+            ///dibujar jugador en nueva posicion
+            var jugador = document.getElementById(id);
+            jugador.style.top=posy+"px";
+            jugador.style.left=posx+"px";
+        }
+    )
+        
+    
+    */
+
+</script>
+
+
+
+
+
+</html>
