@@ -69,7 +69,7 @@
     //conectar al server
     document.getElementById("botonConectar").addEventListener("click",()=>{
         var direccion = document.getElementById("textoServer").value;
-        miconexion= new WebSocket("wss://"+direccion);
+        miconexion= new WebSocket("wss://"+direccion+":8085");
         
 
         miconexion.addEventListener("message",(m)=>{
