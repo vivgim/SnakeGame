@@ -1,8 +1,10 @@
 
 const ws= require("ws");
 
-const server = new ws.WebSocketServer({port:8085}, ()=>{
-    console.log("servidor creado...");
+const PORT = process.env.PORT || 8080
+
+const server = new ws.WebSocketServer({port:PORT}, ()=>{
+    console.log(`Servidor WebSocket escuchando en el puerto ${PORT}`);
 });
 
 //datos del juego
